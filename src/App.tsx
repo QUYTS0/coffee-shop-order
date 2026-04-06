@@ -4,7 +4,6 @@ import POS from './components/POS';
 import Barista from './components/Barista';
 import Owner from './components/Owner';
 import Settings from './components/Settings';
-import Chat from './components/Chat';
 import { UserProfile, Product, Order } from './types';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
@@ -161,7 +160,6 @@ export default function App() {
         {/* Main Content Area */}
         <main className="flex-1 relative overflow-hidden">
           {renderView()}
-          <Chat user={user} products={products} orders={orders} language={language} />
         </main>
       </div>
     </ErrorBoundary>

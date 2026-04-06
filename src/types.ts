@@ -1,10 +1,13 @@
 export type UserRole = 'employee' | 'barista' | 'owner';
 
+export type UserStatus = 'pending' | 'approved' | 'inactive';
+
 export interface UserProfile {
   uid: string;
   email: string;
   role: UserRole;
   displayName?: string;
+  status?: UserStatus;
 }
 
 export interface Product {
@@ -28,6 +31,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   done?: boolean;
+  note?: string;
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered';

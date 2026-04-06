@@ -102,6 +102,11 @@ export const translations = {
         user: 'User',
         role: 'Role',
         actions: 'Actions',
+        pending: 'Pending Approval',
+        active: 'Active Staff',
+        inactive: 'Former Employees',
+        approve: 'Approve',
+        deactivate: 'Deactivate',
         table: {
           user: 'User',
           role: 'Role',
@@ -257,6 +262,11 @@ export const translations = {
         user: 'Người dùng',
         role: 'Vai trò',
         actions: 'Thao tác',
+        pending: 'Chờ phê duyệt',
+        active: 'Nhân viên đang làm việc',
+        inactive: 'Cựu nhân viên',
+        approve: 'Phê duyệt',
+        deactivate: 'Cho thôi việc',
         table: {
           user: 'Người dùng',
           role: 'Vai trò',

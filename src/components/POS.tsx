@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, orderBy, Timestamp, runTransaction, limit } from 'firebase/firestore';
 import { Product, OrderItem, OrderStatus, OrderPriority, UserProfile, Order, Category } from '../types';
-import { ShoppingCart, Plus, Minus, Trash2, Send, Coffee, CupSoda, Cake, Utensils, ListChecks, Clock, CheckCircle2, DollarSign, Edit2, Search, X, ChevronDown, Filter, Sparkles } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Send, Coffee, CupSoda, Cake, Utensils, ListChecks, Clock, CheckCircle2, DollarSign, Edit2, Search, X, ChevronDown, Filter, Sparkles, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { translations } from '../translations';
 
@@ -79,19 +79,28 @@ export default function POS({ user, language }: { user: UserProfile, language: '
       if (existing) {
         return prev.map(item => (item.productId === product.id && item.price === price) ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return [...prev, { productId: product.id, name: product.name, price, quantity: 1, done: false }];
+      return [...prev, { productId: product.id, name: product.name, price, quantity: 1, done: false, note: '' }];
     });
     setSelectingProduct(null);
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (productId: string, price: number, delta: number) => {
     setCart(prev => prev.map(item => {
-      if (item.productId === productId) {
+      if (item.productId === productId && item.price === price) {
         const newQty = Math.max(0, item.quantity + delta);
         return { ...item, quantity: newQty };
       }
       return item;
     }).filter(item => item.quantity > 0));
+  };
+
+  const updateNote = (productId: string, price: number, note: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.productId === productId && item.price === price) {
+        return { ...item, note };
+      }
+      return item;
+    }));
   };
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -381,6 +390,11 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                       <div key={idx} className="flex justify-between text-sm">
                         <span className={item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-300'}>
                           {item.quantity}x {item.name}
+                          {item.note && (
+                            <span className="ml-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/30 px-1 rounded">
+                              Note: {item.note}
+                            </span>
+                          )}
                         </span>
                         {item.done && <CheckCircle2 className="w-3 h-3 text-green-500" />}
                       </div>
@@ -432,20 +446,32 @@ export default function POS({ user, language }: { user: UserProfile, language: '
               <p className="font-medium">{t.pos.cart.empty}</p>
             </div>
           ) : (
-            cart.map(item => (
-              <div key={item.productId} className="flex items-center justify-between gap-4 bg-amber-50 dark:bg-slate-800 p-3 rounded-xl transition-colors duration-300">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-amber-900 dark:text-white truncate">{item.name}</h4>
-                  <p className="text-xs text-amber-600 dark:text-amber-500">{formatCurrency(item.price * item.quantity)}</p>
+            cart.map((item, idx) => (
+              <div key={`${item.productId}-${item.price}-${idx}`} className="flex flex-col gap-2 bg-amber-50 dark:bg-slate-800 p-3 rounded-xl transition-colors duration-300">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-amber-900 dark:text-white truncate">{item.name}</h4>
+                    <p className="text-xs text-amber-600 dark:text-amber-500">{formatCurrency(item.price * item.quantity)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => updateQuantity(item.productId, item.price, -1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-6 text-center font-bold text-amber-900 dark:text-white">{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.productId, item.price, 1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => updateQuantity(item.productId, -1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-6 text-center font-bold text-amber-900 dark:text-white">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.productId, 1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                    <Plus className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                  <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-500" />
+                  <input
+                    type="text"
+                    value={item.note || ''}
+                    onChange={(e) => updateNote(item.productId, item.price, e.target.value)}
+                    placeholder={language === 'en' ? 'Add note...' : 'Thêm ghi chú...'}
+                    className="flex-1 bg-transparent text-[11px] outline-none text-amber-800 dark:text-amber-200 placeholder:text-amber-400/50"
+                  />
                 </div>
               </div>
             ))

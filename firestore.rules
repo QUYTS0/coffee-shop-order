@@ -7,7 +7,9 @@ service cloud.firestore {
 
     // Helper to check if the current user is the hardcoded admin
     function isHardcodedAdmin() {
-      return isAuthenticated() && request.auth.token.email == "viettri0005@gmail.com";
+      return isAuthenticated() && 
+             request.auth.token.email == "viettri0005@gmail.com" && 
+             request.auth.token.email_verified == true;
     }
 
     // Helper to check if the current user has a specific role
@@ -25,13 +27,37 @@ service cloud.firestore {
       return isAdmin() || hasRole('barista');
     }
 
+    function isValidUser(data) {
+      return data.role in ['employee', 'barista', 'owner'] &&
+             data.status in ['pending', 'approved', 'inactive'] &&
+             data.email is string &&
+             data.uid is string &&
+             data.displayName is string;
+    }
+
     match /users/{userId} {
-      // CRITICAL: Ownership check MUST come first to break circularity when hasRole() or isManager() is called
+      // CRITICAL: Ownership check MUST come first to break circularity
       allow read: if isAuthenticated() && (request.auth.uid == userId || isManager());
       
-      // Only admins can create/update roles, but users can update their own non-role info
-      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Allow users to create their own profile during registration/request
+      // Or allow admins to manage users
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == userId && (
+          // Case 1: Hardcoded admin creates their own approved owner profile
+          (isHardcodedAdmin() && request.resource.data.role == "owner" && request.resource.data.status == "approved") ||
+          // Case 2: Any other user creates their own pending employee profile
+          (!isHardcodedAdmin() && request.resource.data.role == "employee" && request.resource.data.status == "pending")
+        )) || 
+        isAdmin()
+      );
+      
+      // Users can update their own non-sensitive info, admins can update everything
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.status == resource.data.status) || 
+        isAdmin()
+      );
     }
 
     match /products/{productId} {

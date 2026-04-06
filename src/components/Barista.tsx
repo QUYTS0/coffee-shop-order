@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { Order, OrderStatus, UserProfile } from '../types';
-import { CheckCircle2, Clock, Play, Check, Coffee, UserCheck, AlertCircle, ShoppingCart, History, Download, Calendar, Filter, ListChecks } from 'lucide-react';
+import { CheckCircle2, Clock, Play, Check, Coffee, UserCheck, AlertCircle, ShoppingCart, History, Download, Calendar, Filter, ListChecks, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import POS from './POS';
 import * as XLSX from 'xlsx';
@@ -16,7 +16,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
   const [historyFilter, setHistoryFilter] = useState<'today' | 'week' | 'month' | 'all'>('today');
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount).replace('₫', 'đ');
   };
 
   useEffect(() => {
@@ -365,6 +365,14 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                                 <span className="ml-2 text-xs text-slate-400 dark:text-slate-500 font-normal">({formatCurrency(item.price)})</span>
                               </span>
                             </div>
+                            {item.note && (
+                              <div className="ml-8 mt-1 p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-r-lg flex items-start gap-2">
+                                <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <span className="text-xs font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                                  {item.note}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

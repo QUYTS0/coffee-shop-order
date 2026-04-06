@@ -18,13 +18,15 @@ export default function Owner({ user, language }: { user: UserProfile, language:
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isManagingCategories, setIsManagingCategories] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('All');
   const [historyFilter, setHistoryFilter] = useState<'today' | 'week' | 'month' | 'all'>('today');
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount).replace('₫', 'đ');
   };
 
   useEffect(() => {
@@ -125,9 +127,13 @@ export default function Owner({ user, language }: { user: UserProfile, language:
     
     let price: number | number[];
     if (priceRaw.includes('-')) {
-      price = priceRaw.split('-').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+      price = priceRaw.split('-').map(p => {
+        const val = parseFloat(p.trim());
+        return val < 1000 ? val * 1000 : val;
+      }).filter(p => !isNaN(p));
     } else {
-      price = parseFloat(priceRaw);
+      const val = parseFloat(priceRaw);
+      price = val < 1000 ? val * 1000 : val;
     }
 
     const productData = {
@@ -160,6 +166,24 @@ export default function Owner({ user, language }: { user: UserProfile, language:
     const path = `users/${uid}`;
     try {
       await updateDoc(doc(db, 'users', uid), { role });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const approveUser = async (uid: string) => {
+    const path = `users/${uid}`;
+    try {
+      await updateDoc(doc(db, 'users', uid), { status: 'approved' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const deactivateUser = async (uid: string) => {
+    const path = `users/${uid}`;
+    try {
+      await updateDoc(doc(db, 'users', uid), { status: 'inactive' });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -367,9 +391,13 @@ export default function Owner({ user, language }: { user: UserProfile, language:
             
             let price: number | number[];
             if (priceStr.includes('-')) {
-              price = priceStr.split('-').map(p => parseFloat(p.replace(/[^0-9.]/g, '').trim())).filter(p => !isNaN(p));
+              price = priceStr.split('-').map(p => {
+                const val = parseFloat(p.replace(/[^0-9.]/g, '').trim());
+                return val < 1000 ? val * 1000 : val;
+              }).filter(p => !isNaN(p));
             } else {
-              price = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+              const val = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+              price = val < 1000 ? val * 1000 : val;
             }
 
             const available = availableRaw !== undefined 
@@ -466,7 +494,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       <div className="flex-1 overflow-y-auto p-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-2xl"><DollarSign className="w-6 h-6" /></div>
@@ -490,6 +518,13 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                   {orders.length ? formatCurrency(totalRevenue / orders.length) : formatCurrency(0)}
                 </p>
               </div>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-2xl"><Package className="w-6 h-6" /></div>
+                  <h3 className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs tracking-widest">{language === 'en' ? 'Total Products' : 'Tổng sản phẩm'}</h3>
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white">{products.length}</p>
+              </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 h-96 transition-colors duration-300">
@@ -512,7 +547,12 @@ export default function Owner({ user, language }: { user: UserProfile, language:
         {activeTab === 'products' && (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.owner.inventory.title}</h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.owner.inventory.title}</h2>
+                <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full text-xs font-bold">
+                  {products.length} {language === 'en' ? 'Products' : 'Sản phẩm'}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -602,7 +642,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                               <button onClick={() => setEditingProduct(product)} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => deleteDoc(doc(db, 'products', product.id))} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                              <button onClick={() => setDeletingProduct(product)} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -615,6 +655,98 @@ export default function Owner({ user, language }: { user: UserProfile, language:
             </div>
 
         <AnimatePresence>
+          {deletingProduct && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800"
+              >
+                <div className="p-8">
+                  <div className="flex items-center gap-4 mb-6 text-red-600">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-2xl">
+                      <Trash2 className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold">{language === 'en' ? 'Confirm Delete' : 'Xác nhận xóa'}</h3>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                    {language === 'en' 
+                      ? `Are you sure you want to delete "${deletingProduct.name}"? This action cannot be undone.`
+                      : `Bạn có chắc chắn muốn xóa "${deletingProduct.name}"? Hành động này không thể hoàn tác.`}
+                  </p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => setDeletingProduct(null)}
+                      className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all"
+                    >
+                      {language === 'en' ? 'Cancel' : 'Hủy'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteDoc(doc(db, 'products', deletingProduct.id));
+                          setDeletingProduct(null);
+                        } catch (error) {
+                          handleFirestoreError(error, OperationType.DELETE, 'products');
+                        }
+                      }}
+                      className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-100 dark:shadow-none"
+                    >
+                      {language === 'en' ? 'Delete' : 'Xóa'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {deletingCategory && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800"
+              >
+                <div className="p-8">
+                  <div className="flex items-center gap-4 mb-6 text-rose-600">
+                    <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-2xl">
+                      <Trash2 className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold">{language === 'en' ? 'Confirm Delete' : 'Xác nhận xóa'}</h3>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                    {language === 'en' 
+                      ? `Are you sure you want to delete category "${deletingCategory.name}"? This might affect products using this category.`
+                      : `Bạn có chắc chắn muốn xóa danh mục "${deletingCategory.name}"? Điều này có thể ảnh hưởng đến các sản phẩm sử dụng danh mục này.`}
+                  </p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => setDeletingCategory(null)}
+                      className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all"
+                    >
+                      {language === 'en' ? 'Cancel' : 'Hủy'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteDoc(doc(db, 'categories', deletingCategory.id));
+                          setDeletingCategory(null);
+                        } catch (error) {
+                          handleFirestoreError(error, OperationType.DELETE, `categories/${deletingCategory.id}`);
+                        }
+                      }}
+                      className="flex-1 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-rose-100 dark:shadow-none"
+                    >
+                      {language === 'en' ? 'Delete' : 'Xóa'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
           {isManagingCategories && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <motion.div
@@ -653,7 +785,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                         <div key={cat.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                           <span className="font-medium text-slate-900 dark:text-white">{cat.name}</span>
                           <button
-                            onClick={() => handleDeleteCategory(cat.id)}
+                            onClick={() => setDeletingCategory(cat)}
                             className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -704,45 +836,123 @@ export default function Owner({ user, language }: { user: UserProfile, language:
         )}
 
         {activeTab === 'users' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                <tr>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.user}</th>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.role}</th>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.actions}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 transition-colors duration-300">
-                {users.map(u => (
-                  <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-slate-900 dark:text-white">{u.displayName}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">{u.email}</div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        u.role === 'owner' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' :
-                        u.role === 'barista' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400'
-                      }`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6">
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateUserRole(u.uid, e.target.value)}
-                        className="p-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-300"
-                      >
-                        <option value="employee">{language === 'en' ? 'Employee' : 'Nhân viên'}</option>
-                        <option value="barista">{language === 'en' ? 'Barista' : 'Pha chế'}</option>
-                        <option value="owner">{language === 'en' ? 'Owner' : 'Chủ sở hữu'}</option>
-                      </select>
-                    </td>
+          <div className="space-y-8">
+            {/* Pending Users */}
+            {users.some(u => u.status === 'pending') && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-amber-200 dark:border-amber-900/30 overflow-hidden transition-colors duration-300">
+                <div className="px-8 py-4 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-900/30">
+                  <h3 className="text-sm font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest">{t.owner.staff.pending}</h3>
+                </div>
+                <table className="w-full text-left">
+                  <tbody className="divide-y divide-amber-50 dark:divide-amber-900/20 transition-colors duration-300">
+                    {users.filter(u => u.status === 'pending').map(u => (
+                      <tr key={u.uid} className="hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors">
+                        <td className="px-8 py-6">
+                          <div className="font-bold text-slate-900 dark:text-white">{u.displayName}</div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400">{u.email}</div>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <button
+                            onClick={() => approveUser(u.uid)}
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-amber-100 dark:shadow-none"
+                          >
+                            {t.owner.staff.approve}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Active Users */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
+              <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{t.owner.staff.active}</h3>
+              </div>
+              <table className="w-full text-left">
+                <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300">
+                  <tr>
+                    <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.user}</th>
+                    <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.role}</th>
+                    <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.actions}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 transition-colors duration-300">
+                  {users.filter(u => u.status !== 'pending' && u.status !== 'inactive').map(u => (
+                    <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="font-bold text-slate-900 dark:text-white">{u.displayName}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">{u.email}</div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                          u.role === 'owner' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' :
+                          u.role === 'barista' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <select
+                            value={u.role}
+                            onChange={(e) => updateUserRole(u.uid, e.target.value)}
+                            className="p-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-300"
+                          >
+                            <option value="employee">{language === 'en' ? 'Employee' : 'Nhân viên'}</option>
+                            <option value="barista">{language === 'en' ? 'Barista' : 'Pha chế'}</option>
+                            <option value="owner">{language === 'en' ? 'Owner' : 'Chủ sở hữu'}</option>
+                          </select>
+                          {u.uid !== user.uid && (
+                            <button
+                              onClick={() => deactivateUser(u.uid)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                              title={t.owner.staff.deactivate}
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Inactive Users */}
+            {users.some(u => u.status === 'inactive') && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300 opacity-60">
+                <div className="px-8 py-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.inactive}</h3>
+                </div>
+                <table className="w-full text-left font-mono text-xs">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 transition-colors duration-300">
+                    {users.filter(u => u.status === 'inactive').map(u => (
+                      <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-8 py-4">
+                          <div className="font-bold text-slate-700 dark:text-slate-300">{u.displayName}</div>
+                          <div className="text-slate-500 dark:text-slate-500">{u.email}</div>
+                        </td>
+                        <td className="px-8 py-4">
+                          <span className="uppercase tracking-widest">{u.role}</span>
+                        </td>
+                        <td className="px-8 py-4 text-right">
+                          <button
+                            onClick={() => approveUser(u.uid)}
+                            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                          >
+                            {language === 'en' ? 'Reactivate' : 'Kích hoạt lại'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -781,7 +991,16 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white">
-                          {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                          {order.items.map(i => (
+                            <span key={i.productId} className="mr-2">
+                              {i.quantity}x {i.name}
+                              {i.note && (
+                                <span className="ml-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/30 px-1 rounded">
+                                  ({i.note})
+                                </span>
+                              )}
+                            </span>
+                          ))}
                         </div>
                         <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {order.createdAt?.toDate().toLocaleDateString()}</span>
