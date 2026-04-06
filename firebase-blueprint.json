@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access control.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "role": { "type": "string", "enum": ["employee", "barista", "owner"], "description": "The user's role in the shop." },
+        "displayName": { "type": "string", "description": "The user's display name." }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A beverage or food item available for order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["Coffee", "Tea", "Pastry", "Other"] },
+        "imageUrl": { "type": "string", "format": "url" },
+        "available": { "type": "boolean" }
+      },
+      "required": ["name", "price", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order containing multiple items.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["pending", "preparing", "ready", "delivered"] },
+        "tableNumber": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "totalAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "paid": { "type": "boolean" }
+      },
+      "required": ["items", "status", "totalAmount", "createdAt", "createdBy"]
+    },
+    "DailySale": {
+      "title": "Daily Sale",
+      "description": "Aggregated sales data for a specific day.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "totalRevenue": { "type": "number" },
+        "orderCount": { "type": "integer" }
+      },
+      "required": ["date", "totalRevenue", "orderCount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles." },
+    "/products/{productId}": { "schema": "Product", "description": "Available menu items." },
+    "/orders/{orderId}": { "schema": "Order", "description": "Customer orders." },
+    "/dailySales/{date}": { "schema": "DailySale", "description": "Daily sales summaries." }
+  }
+}
