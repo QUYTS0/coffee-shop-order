@@ -8,7 +8,7 @@ import { UserProfile, Product, Order } from './types';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { Coffee, ShoppingCart, UserCheck, TrendingUp, LogOut, Settings as SettingsIcon } from 'lucide-react';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { translations } from './translations';
 
 import ErrorBoundary from './components/ErrorBoundary';
@@ -20,6 +20,16 @@ export default function App() {
   const [activeView, setActiveView] = useState<string>('');
   const [language, setLanguage] = useState<'en' | 'vi'>('en');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setActiveView('');
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     // Apply theme to body
@@ -148,7 +158,17 @@ export default function App() {
               </div>
             </div>
             <button
-              onClick={() => signOut(auth)}
+              onClick={async () => {
+                try {
+                  await signOut(auth);
+                  setUser(null);
+                  setActiveView('');
+                } catch (error) {
+                  console.error('Sign out error:', error);
+                  setUser(null);
+                  setActiveView('');
+                }
+              }}
               className="w-full flex items-center gap-3 p-3 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all font-medium text-sm group"
             >
               <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />

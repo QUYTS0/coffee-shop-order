@@ -140,7 +140,25 @@ export default function Auth({ onUserChange, language }: { onUserChange: (user: 
     }
   };
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      onUserChange(null);
+      setPendingApproval(false);
+      setShowRequestScreen(false);
+      setTempFirebaseUser(null);
+      setError(null);
+      setIsRegistering(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      setUser(null);
+      onUserChange(null);
+      setPendingApproval(false);
+      setShowRequestScreen(false);
+      setTempFirebaseUser(null);
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center h-screen bg-white dark:bg-slate-950 transition-colors duration-300"><Coffee className="animate-bounce text-amber-600 dark:text-amber-500 w-12 h-12" /></div>;
 
