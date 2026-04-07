@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, orderBy, Timestamp, runTransaction, limit } from 'firebase/firestore';
 import { Product, OrderItem, OrderStatus, OrderPriority, UserProfile, Order, Category } from '../types';
@@ -20,6 +20,8 @@ export default function POS({ user, language }: { user: UserProfile, language: '
   const [submitting, setSubmitting] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [selectingProduct, setSelectingProduct] = useState<Product | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const cartRef = useRef<HTMLDivElement>(null);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount).replace('₫', 'đ');
@@ -215,15 +217,19 @@ export default function POS({ user, language }: { user: UserProfile, language: '
     ...categories.map(cat => ({ id: cat.id, label: cat.name }))
   ];
 
+  const scrollToCart = () => {
+    cartRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-amber-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       {/* Product Section */}
-      <div className="flex-1 flex flex-col p-6 relative z-10">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl shadow-sm border border-amber-100 dark:border-slate-800 transition-colors duration-300">
+      <div className="flex-1 flex flex-col p-4 lg:p-6 relative z-10 overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4 lg:mb-6">
+          <div className="flex w-full md:w-auto bg-white dark:bg-slate-900 p-1 rounded-2xl shadow-sm border border-amber-100 dark:border-slate-800 transition-colors duration-300 pl-14 md:pl-1">
             <button
               onClick={() => setActiveTab('menu')}
-              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 relative overflow-hidden group ${
+              className={`flex-1 md:flex-none px-4 lg:px-6 py-2 rounded-xl text-xs lg:text-sm font-bold transition-all flex items-center justify-center gap-2 relative overflow-hidden group ${
                 activeTab === 'menu' 
                   ? 'bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-none' 
                   : 'text-amber-700 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-slate-800'
@@ -234,7 +240,7 @@ export default function POS({ user, language }: { user: UserProfile, language: '
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 relative overflow-hidden group ${
+              className={`flex-1 md:flex-none px-4 lg:px-6 py-2 rounded-xl text-xs lg:text-sm font-bold transition-all flex items-center justify-center gap-2 relative overflow-hidden group ${
                 activeTab === 'orders' 
                   ? 'bg-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-none' 
                   : 'text-amber-700 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-slate-800'
@@ -246,8 +252,8 @@ export default function POS({ user, language }: { user: UserProfile, language: '
           </div>
           
           {activeTab === 'menu' && (
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <div className="relative flex-1 sm:w-64">
+            <div className="flex flex-row gap-2 lg:gap-4 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -257,13 +263,13 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                   className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-all"
                 />
               </div>
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button 
                   onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 rounded-xl text-sm font-bold text-amber-800 dark:text-amber-500 transition-all hover:bg-amber-50 dark:hover:bg-slate-800 shadow-sm"
+                  className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 rounded-xl text-xs lg:text-sm font-bold text-amber-800 dark:text-amber-500 transition-all hover:bg-amber-50 dark:hover:bg-slate-800 shadow-sm"
                 >
                   <Filter className="w-4 h-4" />
-                  <span>{displayCategories.find(c => c.id === category)?.label || t.pos.categories.all}</span>
+                  <span className="hidden sm:inline">{displayCategories.find(c => c.id === category)?.label || t.pos.categories.all}</span>
                   <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
@@ -312,7 +318,7 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-20"
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 lg:gap-4 overflow-y-auto pr-2 pb-24 lg:pb-6"
               >
                 {filteredProducts.map(product => (
                   <motion.button
@@ -322,24 +328,37 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                     whileTap={{ scale: 0.98 }}
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group h-44 border border-amber-100 dark:border-slate-800 relative overflow-hidden"
+                    className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col group h-48 lg:h-56 border border-amber-100 dark:border-slate-800 relative overflow-hidden"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="p-2 bg-amber-50 dark:bg-slate-800 rounded-lg text-amber-700 dark:text-amber-500 group-hover:bg-amber-700 group-hover:text-white transition-colors">
-                        {product.category === 'Coffee' && <Coffee className="w-5 h-5" />}
-                        {(product.category === 'Tea' || product.category === 'Milk Tea' || product.category === 'Juice' || product.category === 'Smoothie' || product.category === 'Detox' || product.category === 'Soda' || product.category === 'Yaourt') && <CupSoda className="w-5 h-5" />}
-                        {product.category === 'Snacks' && <Cake className="w-5 h-5" />}
-                        {(product.category !== 'Coffee' && product.category !== 'Tea' && product.category !== 'Milk Tea' && product.category !== 'Juice' && product.category !== 'Smoothie' && product.category !== 'Detox' && product.category !== 'Soda' && product.category !== 'Yaourt' && product.category !== 'Snacks') && <Utensils className="w-5 h-5" />}
+                    <div className="h-20 lg:h-24 w-full relative overflow-hidden bg-amber-50 dark:bg-slate-800">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-amber-200 dark:text-slate-700">
+                          {product.category === 'Coffee' && <Coffee className="w-10 h-10" />}
+                          {(product.category === 'Tea' || product.category === 'Milk Tea' || product.category === 'Juice' || product.category === 'Smoothie' || product.category === 'Detox' || product.category === 'Soda' || product.category === 'Yaourt') && <CupSoda className="w-10 h-10" />}
+                          {product.category === 'Snacks' && <Cake className="w-10 h-10" />}
+                          {(product.category !== 'Coffee' && product.category !== 'Tea' && product.category !== 'Milk Tea' && product.category !== 'Juice' && product.category !== 'Smoothie' && product.category !== 'Detox' && product.category !== 'Soda' && product.category !== 'Yaourt' && product.category !== 'Snacks') && <Utensils className="w-10 h-10" />}
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-lg shadow-sm">
+                        <span className="text-[10px] font-black text-amber-900 dark:text-amber-200">
+                          {Array.isArray(product.price) ? `${formatCurrency(product.price[0])}` : formatCurrency(product.price)}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                        {Array.isArray(product.price) ? `${formatCurrency(product.price[0])}-${formatCurrency(product.price[product.price.length-1])}` : formatCurrency(product.price)}
-                      </span>
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600/60 dark:text-amber-500/60 mb-1">
-                        {product.category}
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600/60 dark:text-amber-500/60 mb-1">
+                          {product.category}
+                        </div>
+                        <h3 className="font-semibold text-amber-900 dark:text-white line-clamp-2 leading-tight text-sm">{product.name}</h3>
                       </div>
-                      <h3 className="font-semibold text-amber-900 dark:text-white line-clamp-2 leading-tight">{product.name}</h3>
+                      {Array.isArray(product.price) && (
+                        <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                          {product.price.length} {language === 'en' ? 'Sizes' : 'Kích cỡ'}
+                        </div>
+                      )}
                     </div>
                   </motion.button>
                 ))}
@@ -432,107 +451,158 @@ export default function POS({ user, language }: { user: UserProfile, language: '
         )}
       </div>
 
-      {/* Cart Section */}
-      <div className="w-full lg:w-96 bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-amber-100 dark:border-slate-800 transition-colors duration-300">
-        <div className="p-6 border-b border-amber-50 dark:border-slate-800 flex items-center gap-3">
-          <ShoppingCart className="text-amber-700 dark:text-amber-500" />
-          <h2 className="text-xl font-bold text-amber-900 dark:text-white">{t.pos.cart.title}</h2>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-amber-300 dark:text-amber-900/50 opacity-50">
-              <ShoppingCart className="w-16 h-16 mb-4" />
-              <p className="font-medium">{t.pos.cart.empty}</p>
-            </div>
-          ) : (
-            cart.map((item, idx) => (
-              <div key={`${item.productId}-${item.price}-${idx}`} className="flex flex-col gap-2 bg-amber-50 dark:bg-slate-800 p-3 rounded-xl transition-colors duration-300">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-amber-900 dark:text-white truncate">{item.name}</h4>
-                    <p className="text-xs text-amber-600 dark:text-amber-500">{formatCurrency(item.price * item.quantity)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => updateQuantity(item.productId, item.price, -1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-6 text-center font-bold text-amber-900 dark:text-white">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.productId, item.price, 1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg">
-                  <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-500" />
-                  <input
-                    type="text"
-                    value={item.note || ''}
-                    onChange={(e) => updateNote(item.productId, item.price, e.target.value)}
-                    placeholder={language === 'en' ? 'Add note...' : 'Thêm ghi chú...'}
-                    className="flex-1 bg-transparent text-[11px] outline-none text-amber-800 dark:text-amber-200 placeholder:text-amber-400/50"
-                  />
-                </div>
-              </div>
-            ))
+      {/* Floating Cart Button for Mobile */}
+      {activeTab === 'menu' && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          onClick={() => setIsCartOpen(true)}
+          className="lg:hidden fixed bottom-6 right-6 bg-amber-700 text-white p-4 rounded-full shadow-2xl z-50 flex items-center gap-2"
+        >
+          <ShoppingCart className="w-6 h-6" />
+          {cart.length > 0 && (
+            <span className="bg-white text-amber-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            </span>
           )}
-        </div>
+        </motion.button>
+      )}
 
-        <div className="p-6 bg-amber-50/50 dark:bg-slate-900/50 space-y-4 border-t border-amber-100 dark:border-slate-800 transition-colors duration-300">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-1 block">{t.pos.cart.table}</label>
-              <input
-                type="text"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="No."
-                className="w-full p-2 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-colors duration-300"
+      {/* Cart Section - Slide-over on mobile */}
+      <AnimatePresence>
+        {(isCartOpen || window.innerWidth >= 1024) && (
+          <>
+            {/* Overlay for mobile */}
+            {isCartOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsCartOpen(false)}
+                className="lg:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110]"
               />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-1 block">{language === 'en' ? 'Priority' : 'Ưu tiên'}</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as OrderPriority)}
-                className="w-full p-2 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-colors duration-300"
-              >
-                <option value="low">{language === 'en' ? 'Low' : 'Thấp'}</option>
-                <option value="medium">{language === 'en' ? 'Medium' : 'Trung bình'}</option>
-                <option value="high">{language === 'en' ? 'High' : 'Cao'}</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2">
-            <span className="text-amber-700 dark:text-amber-500 font-medium">{t.pos.cart.total}</span>
-            <span className="text-2xl font-bold text-amber-900 dark:text-white">{formatCurrency(total)}</span>
-          </div>
-
-          <div className="flex gap-2">
-            {editingOrderId && (
-              <button
-                onClick={cancelEdit}
-                className="flex-1 py-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all"
-              >
-                {language === 'en' ? 'Cancel' : 'Hủy'}
-              </button>
             )}
-            <button
-              disabled={cart.length === 0 || !tableNumber || submitting}
-              onClick={placeOrder}
-              className="flex-[2] py-4 bg-amber-700 hover:bg-amber-800 disabled:bg-amber-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-amber-200 dark:hover:shadow-none relative group"
+            
+            <motion.div
+              ref={cartRef}
+              initial={window.innerWidth < 1024 ? { x: '100%' } : false}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={`fixed lg:relative right-0 top-0 bottom-0 z-[120] lg:z-auto w-full max-w-md lg:w-96 bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-amber-100 dark:border-slate-800 transition-colors duration-300 ${
+                !isCartOpen && 'hidden lg:flex'
+              }`}
             >
-              {submitting ? <Coffee className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
-              {editingOrderId ? (language === 'en' ? 'Update Order' : 'Cập nhật đơn') : t.pos.cart.placeOrder}
-              
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 rounded-full shadow-lg group-hover:scale-110 transition-transform">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="p-6 border-b border-amber-50 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="text-amber-700 dark:text-amber-500" />
+                  <h2 className="text-xl font-bold text-amber-900 dark:text-white">{t.pos.cart.title}</h2>
+                </div>
+                <button 
+                  onClick={() => setIsCartOpen(false)}
+                  className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-            </button>
-          </div>
-        </div>
-      </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {cart.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-amber-300 dark:text-amber-900/50 opacity-50">
+                    <ShoppingCart className="w-16 h-16 mb-4" />
+                    <p className="font-medium">{t.pos.cart.empty}</p>
+                  </div>
+                ) : (
+                  cart.map((item, idx) => (
+                    <div key={`${item.productId}-${item.price}-${idx}`} className="flex flex-col gap-2 bg-amber-50 dark:bg-slate-800 p-3 rounded-xl transition-colors duration-300">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-amber-900 dark:text-white truncate">{item.name}</h4>
+                          <p className="text-xs text-amber-600 dark:text-amber-500">{formatCurrency(item.price * item.quantity)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => updateQuantity(item.productId, item.price, -1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="w-6 text-center font-bold text-amber-900 dark:text-white">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.productId, item.price, 1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-500" />
+                        <input
+                          type="text"
+                          value={item.note || ''}
+                          onChange={(e) => updateNote(item.productId, item.price, e.target.value)}
+                          placeholder={language === 'en' ? 'Add note...' : 'Thêm ghi chú...'}
+                          className="flex-1 bg-transparent text-[11px] outline-none text-amber-800 dark:text-amber-200 placeholder:text-amber-400/50"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-6 bg-amber-50/50 dark:bg-slate-900/50 space-y-4 border-t border-amber-100 dark:border-slate-800 transition-colors duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-1 block">{t.pos.cart.table}</label>
+                    <input
+                      type="text"
+                      value={tableNumber}
+                      onChange={(e) => setTableNumber(e.target.value)}
+                      placeholder="No."
+                      className="w-full p-2 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-colors duration-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-1 block">{language === 'en' ? 'Priority' : 'Ưu tiên'}</label>
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as OrderPriority)}
+                      className="w-full p-2 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-colors duration-300"
+                    >
+                      <option value="low">{language === 'en' ? 'Low' : 'Thấp'}</option>
+                      <option value="medium">{language === 'en' ? 'Medium' : 'Trung bình'}</option>
+                      <option value="high">{language === 'en' ? 'High' : 'Cao'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-amber-700 dark:text-amber-500 font-medium">{t.pos.cart.total}</span>
+                  <span className="text-2xl font-bold text-amber-900 dark:text-white">{formatCurrency(total)}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  {editingOrderId && (
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 py-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all"
+                    >
+                      {language === 'en' ? 'Cancel' : 'Hủy'}
+                    </button>
+                  )}
+                  <button
+                    disabled={cart.length === 0 || !tableNumber || submitting}
+                    onClick={placeOrder}
+                    className="flex-[2] py-4 bg-amber-700 hover:bg-amber-800 disabled:bg-amber-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-amber-200 dark:hover:shadow-none relative group"
+                  >
+                    {submitting ? <Coffee className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
+                    {editingOrderId ? (language === 'en' ? 'Update Order' : 'Cập nhật đơn') : t.pos.cart.placeOrder}
+                    
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 rounded-full shadow-lg group-hover:scale-110 transition-transform">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
       {/* Price Selection Modal */}
       <AnimatePresence>
         {selectingProduct && (

@@ -215,7 +215,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.barista.title}</h1>
         </div>
         
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl transition-colors duration-300">
+        <div className="flex w-full md:w-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto transition-colors duration-300 no-scrollbar">
           {[
             { id: 'orders', label: `${t.barista.tabs.orders} (${orders.length})` },
             { id: 'summary', label: t.barista.tabs.summary },
@@ -245,7 +245,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
         {view === 'history' && (
           <div className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <div className="flex w-full md:w-auto items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto no-scrollbar">
                 {(['today', 'week', 'month', 'all'] as const).map(f => (
                   <button
                     key={f}
@@ -269,9 +269,9 @@ export default function Barista({ user, language }: { user: UserProfile, languag
             <div className="space-y-4">
               {filteredHistory.map(order => (
                 <div key={order.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col gap-4 transition-colors duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center justify-center min-w-[64px] h-16 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
+                      <div className="flex flex-col items-center justify-center min-w-[64px] h-16 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shrink-0">
                         <span className="text-[10px] font-bold uppercase opacity-50">{t.barista.history.table.order}</span>
                         <span className="text-xl font-black">#{order.orderNumber}</span>
                       </div>
@@ -279,7 +279,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                         <div className="font-bold text-slate-900 dark:text-white">
                           {order.items.map(i => `${i.quantity}x ${i.name} (${formatCurrency(i.price)})`).join(', ')}
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {order.createdAt?.toDate().toLocaleDateString()}</span>
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {order.createdAt?.toDate().toLocaleTimeString()}</span>
                           <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded text-xs font-bold">{t.barista.orderCard.table} {order.tableNumber}</span>
@@ -287,7 +287,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="lg:text-right border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100 dark:border-slate-800">
                       <div className="text-2xl font-black text-slate-900 dark:text-white">
                         {formatCurrency(order.totalAmount)}
                       </div>

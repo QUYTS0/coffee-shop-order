@@ -16,6 +16,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productImageUrl, setProductImageUrl] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [isManagingCategories, setIsManagingCategories] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
@@ -140,6 +141,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       name: formData.get('name') as string,
       price,
       category: formData.get('category') as string,
+      imageUrl: productImageUrl,
       available: true
     };
 
@@ -148,6 +150,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       try {
         await updateDoc(doc(db, 'products', editingProduct.id), productData);
         setEditingProduct(null);
+        setProductImageUrl('');
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, path);
       }
@@ -156,6 +159,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       try {
         await addDoc(collection(db, path), productData);
         setIsAddingProduct(false);
+        setProductImageUrl('');
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, path);
       }
@@ -187,6 +191,23 @@ export default function Owner({ user, language }: { user: UserProfile, language:
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500000) { // 500KB limit for Base64 in Firestore
+      alert(language === 'en' ? 'Image is too large. Please select an image under 500KB.' : 'Hình ảnh quá lớn. Vui lòng chọn ảnh dưới 500KB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string;
+      setProductImageUrl(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   const seedProducts = async () => {
@@ -387,6 +408,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
             const name = row.Name || row.name || row['Tên sản phẩm'] || row['Tên'];
             const priceStr = String(row.Price || row.price || row['Giá'] || row['Giá tiền']);
             const category = row.Category || row.category || row['Danh mục'] || 'Other';
+            const imageUrl = row.ImageUrl || row.imageUrl || row['Ảnh'] || '';
             const availableRaw = row.Available !== undefined ? row.Available : row.available;
             
             let price: number | number[];
@@ -409,6 +431,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                 name,
                 price,
                 category,
+                imageUrl,
                 available
               });
               successCount++;
@@ -465,12 +488,12 @@ export default function Owner({ user, language }: { user: UserProfile, language:
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300">
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-6 flex items-center justify-between transition-colors duration-300">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <TrendingUp className="text-indigo-600 dark:text-indigo-400 w-8 h-8" />
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-4 lg:py-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-colors duration-300">
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+          <TrendingUp className="text-indigo-600 dark:text-indigo-400 w-6 lg:w-8 h-6 lg:h-8" />
           {t.owner.title}
         </h1>
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl transition-colors duration-300">
+        <div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto transition-colors duration-300 no-scrollbar">
           {[
             { id: 'dashboard', icon: TrendingUp, label: t.owner.tabs.dashboard, roles: ['owner'] },
             { id: 'products', icon: Package, label: t.owner.tabs.inventory, roles: ['owner', 'barista'] },
@@ -491,7 +514,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -605,8 +628,8 @@ export default function Owner({ user, language }: { user: UserProfile, language:
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left min-w-[600px]">
                   <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                     <tr>
                       <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.inventory.form.name}</th>
@@ -625,7 +648,16 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                       .map(product => (
                         <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                           <td className="px-6 py-4">
-                            <div className="font-bold text-slate-900 dark:text-white">{product.name}</div>
+                            <div className="flex items-center gap-3">
+                              {product.imageUrl ? (
+                                <img src={product.imageUrl} alt={product.name} className="w-10 h-10 object-cover rounded-lg shadow-sm" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                  <Package className="w-5 h-5 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="font-bold text-slate-900 dark:text-white">{product.name}</div>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] font-bold uppercase tracking-wider">
@@ -639,7 +671,10 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button onClick={() => setEditingProduct(product)} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">
+                              <button onClick={() => {
+                                setEditingProduct(product);
+                                setProductImageUrl(product.imageUrl || '');
+                              }} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button onClick={() => setDeletingProduct(product)} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
@@ -802,12 +837,51 @@ export default function Owner({ user, language }: { user: UserProfile, language:
 
         {(isAddingProduct || editingProduct) && (
               <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl max-w-md w-full transition-colors duration-300">
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }} 
+                  animate={{ scale: 1, opacity: 1 }} 
+                  className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl max-w-md w-full transition-colors duration-300 max-h-[90vh] overflow-y-auto"
+                >
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{editingProduct ? t.owner.inventory.edit : t.owner.inventory.add}</h3>
-                    <button onClick={() => { setIsAddingProduct(false); setEditingProduct(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><X /></button>
+                    <button onClick={() => { setIsAddingProduct(false); setEditingProduct(null); setProductImageUrl(''); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><X /></button>
                   </div>
                   <form onSubmit={handleSaveProduct} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">{language === 'en' ? 'Product Image' : 'Hình ảnh sản phẩm'}</label>
+                      <div className="flex flex-col items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                        {productImageUrl ? (
+                          <div className="relative w-32 h-32">
+                            <img src={productImageUrl} alt="Preview" className="w-full h-full object-cover rounded-lg shadow-md" referrerPolicy="no-referrer" />
+                            <button 
+                              type="button"
+                              onClick={() => setProductImageUrl('')}
+                              className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <Package className="w-12 h-12 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-wider">{language === 'en' ? 'No Image Selected' : 'Chưa chọn ảnh'}</p>
+                          </div>
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleImageUpload}
+                          className="hidden" 
+                          id="product-image-upload"
+                        />
+                        <label 
+                          htmlFor="product-image-upload"
+                          className="px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-all"
+                        >
+                          {language === 'en' ? 'Choose Image' : 'Chọn ảnh'}
+                        </label>
+                      </div>
+                    </div>
                     <div>
                       <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">{t.owner.inventory.form.name}</label>
                       <input name="name" defaultValue={editingProduct?.name} required className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white transition-colors duration-300" />
@@ -843,7 +917,8 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                 <div className="px-8 py-4 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-900/30">
                   <h3 className="text-sm font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest">{t.owner.staff.pending}</h3>
                 </div>
-                <table className="w-full text-left">
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left min-w-[400px]">
                   <tbody className="divide-y divide-amber-50 dark:divide-amber-900/20 transition-colors duration-300">
                     {users.filter(u => u.status === 'pending').map(u => (
                       <tr key={u.uid} className="hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors">
@@ -864,14 +939,16 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
 
             {/* Active Users */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
               <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{t.owner.staff.active}</h3>
               </div>
-              <table className="w-full text-left">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left min-w-[600px]">
                 <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300">
                   <tr>
                     <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.table.user}</th>
@@ -921,6 +998,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                 </tbody>
               </table>
             </div>
+          </div>
 
             {/* Inactive Users */}
             {users.some(u => u.status === 'inactive') && (
@@ -928,7 +1006,8 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                 <div className="px-8 py-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                   <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.owner.staff.inactive}</h3>
                 </div>
-                <table className="w-full text-left font-mono text-xs">
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left font-mono text-xs min-w-[500px]">
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 transition-colors duration-300">
                     {users.filter(u => u.status === 'inactive').map(u => (
                       <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -952,7 +1031,8 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
           </div>
         )}
 
