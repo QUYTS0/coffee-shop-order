@@ -328,9 +328,9 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                     whileTap={{ scale: 0.98 }}
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col group h-48 lg:h-56 border border-amber-100 dark:border-slate-800 relative overflow-hidden"
+                    className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col group h-full min-h-[12rem] lg:min-h-[14rem] border border-amber-100 dark:border-slate-800 relative overflow-hidden"
                   >
-                    <div className="h-20 lg:h-24 w-full relative overflow-hidden bg-amber-50 dark:bg-slate-800">
+                    <div className="h-20 w-full relative overflow-hidden bg-amber-50 dark:bg-slate-800">
                       {product.imageUrl ? (
                         <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
                       ) : (
@@ -347,15 +347,15 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                         </span>
                       </div>
                     </div>
-                    <div className="p-4 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600/60 dark:text-amber-500/60 mb-1">
+                    <div className="p-3 lg:p-4 flex-1 flex flex-col justify-start">
+                      <div className="mb-2">
+                        <div className="text-[15px] font-bold uppercase tracking-wider text-amber-600/60 dark:text-amber-500/60 mb-1">
                           {product.category}
                         </div>
-                        <h3 className="font-semibold text-amber-900 dark:text-white line-clamp-2 leading-tight text-sm">{product.name}</h3>
+                        <h3 className="font-semibold text-amber-900 dark:text-white leading-tight text-lg lg:text-xl break-words">{product.name}</h3>
                       </div>
                       {Array.isArray(product.price) && (
-                        <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                        <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter mt-auto pt-1">
                           {product.price.length} {language === 'en' ? 'Sizes' : 'Kích cỡ'}
                         </div>
                       )}
