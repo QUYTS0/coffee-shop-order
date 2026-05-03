@@ -76,7 +76,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
       [t.barista.history.table.table]: o.tableNumber,
       [t.barista.history.table.items]: o.items.map(i => `${i.quantity}x ${i.name}`).join(', '),
       [t.barista.history.table.total]: o.totalAmount,
-      [t.barista.history.table.status]: o.status,
+      [t.barista.history.table.status]: t.barista.status[o.status] || o.status,
       [t.barista.history.table.staff]: o.createdByName,
       [t.barista.history.table.paid]: o.paid ? (language === 'en' ? 'Yes' : 'Có') : (language === 'en' ? 'No' : 'Không')
     }));
@@ -224,7 +224,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
             <button
               key={tab.id}
               onClick={() => setView(tab.id as any)}
-              className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`relative flex-1 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
                 view === tab.id ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300'
               }`}
             >
@@ -292,7 +292,7 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                         {formatCurrency(order.totalAmount)}
                       </div>
                       <div className={`text-[10px] font-bold uppercase tracking-widest ${order.paid ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {order.paid ? (language === 'en' ? 'Paid' : 'Đã thanh toán') : (language === 'en' ? 'Unpaid' : 'Chưa thanh toán')} • {order.status}
+                        {order.paid ? (language === 'en' ? 'Paid' : 'Đã thanh toán') : (language === 'en' ? 'Unpaid' : 'Chưa thanh toán')} • {t.barista.status[order.status]}
                       </div>
                     </div>
                   </div>
@@ -320,9 +320,11 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={order.id}
-                      className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-l-8 overflow-hidden flex flex-col transition-colors duration-300 ${
-                        order.priority === 'high' ? 'border-red-500' :
-                        order.priority === 'medium' ? 'border-amber-500' : 'border-indigo-500'
+                      className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-l-[25px] overflow-hidden flex flex-col transition-colors duration-300 ${
+                        order.status === 'ready' ? 'border-green-500 bg-green-50/30 dark:bg-green-900/10' :
+                        order.status === 'preparing' ? 'border-amber-500' :
+                        order.status === 'delivered' ? 'border-blue-500 bg-blue-50/30 dark:bg-blue-900/10' :
+                        'border-slate-300 dark:border-slate-700'
                       }`}
                     >
                       <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start transition-colors duration-300">
@@ -341,34 +343,38 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                           order.status === 'pending' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' :
                           order.status === 'preparing' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                         }`}>
-                          {order.status}
+                          {t.barista.status[order.status]}
                         </div>
                       </div>
 
                       <div className="flex-1 p-4 space-y-3">
                         {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => updateItemStatus(order.id, idx, !item.done)}
-                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                                  item.done 
-                                    ? 'bg-green-500 border-green-500 text-white' 
-                                    : 'border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400'
-                                }`}
-                              >
-                                {item.done && <Check className="w-3 h-3" />}
-                              </button>
-                              <span className={`font-medium ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-300'}`}>
-                                <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-2">{item.quantity}x</span>
-                                {item.name}
-                                <span className="ml-2 text-xs text-slate-400 dark:text-slate-500 font-normal">({formatCurrency(item.price)})</span>
+                          <div key={idx} className="flex flex-col">
+                            <div className="flex justify-between items-center w-full gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <button
+                                  onClick={() => updateItemStatus(order.id, idx, !item.done)}
+                                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                    item.done 
+                                      ? 'bg-green-500 border-green-500 text-white shadow-inner' 
+                                      : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 shadow-sm'
+                                  }`}
+                                >
+                                  {item.done && <Check className="w-4 h-4" />}
+                                </button>
+                                <span className={`font-medium break-words text-base ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-black mr-2 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded text-sm">{item.quantity}x</span>
+                                  {item.name}
+                                </span>
+                              </div>
+                              <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 border border-amber-200 dark:border-amber-800 shadow-sm">
+                                {formatCurrency(item.price)}
                               </span>
                             </div>
                             {item.note && (
-                              <div className="ml-8 mt-1 p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-r-lg flex items-start gap-2">
-                                <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                                <span className="text-xs font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                              <div className="ml-12 mt-1 p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-r-lg flex items-start gap-2 max-w-fit">
+                                <StickyNote className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
                                   {item.note}
                                 </span>
                               </div>
@@ -425,21 +431,18 @@ export default function Barista({ user, language }: { user: UserProfile, languag
                 <div className="p-8 space-y-4">
                   {Object.entries(itemSummary).length > 0 ? (
                     Object.entries(itemSummary).map(([name, qty]) => (
-                      <div key={name} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-                        <div className="flex flex-col">
-                          <span className="text-lg font-semibold text-slate-800 dark:text-slate-200">{name}</span>
-                          <span className="text-sm text-slate-500 dark:text-slate-400">{language === 'en' ? 'Total' : 'Tổng'}: {qty} {language === 'en' ? 'units' : 'đơn vị'}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
+                      <div key={name} className="flex flex-col gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+                        <span className="text-lg font-semibold text-slate-800 dark:text-slate-200 w-full">{name}</span>
+                        <div className="flex items-center justify-end gap-4 mt-auto">
+                          <span className="w-12 h-12 flex items-center justify-center bg-indigo-600 text-white rounded-full font-bold text-xl shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
+                            {qty}
+                          </span>
                           <button
                             onClick={() => markItemTypeDone(name)}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-sm"
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-sm shrink-0"
                           >
                             <CheckCircle2 className="w-4 h-4" /> {t.barista.summary.markAllDone}
                           </button>
-                          <span className="w-12 h-12 flex items-center justify-center bg-indigo-600 text-white rounded-full font-bold text-xl shadow-lg shadow-indigo-200 dark:shadow-none">
-                            {qty}
-                          </span>
                         </div>
                       </div>
                     ))

@@ -38,8 +38,14 @@ export const translations = {
       title: 'Barista Dashboard',
       tabs: {
         orders: 'Orders',
-        summary: 'Preparation Summary',
+        summary: 'Summary',
         history: 'History'
+      },
+      status: {
+        pending: 'Pending',
+        preparing: 'Preparing',
+        ready: 'Ready',
+        delivered: 'Delivered'
       },
       orderCard: {
         table: 'Table',
@@ -65,7 +71,7 @@ export const translations = {
       summary: {
         title: 'Items to Prepare',
         subtitle: 'Total quantities across all pending orders',
-        markAllDone: 'Mark All Done',
+        markAllDone: 'Done',
         noItems: 'No items currently in queue.'
       }
     },
@@ -162,15 +168,15 @@ export const translations = {
   vi: {
     brand: 'Cheese Lab',
     nav: {
-      placeOrder: 'Đặt món',
-      baristaView: 'Giao diện Barista',
+      placeOrder: 'Bán hàng',
+      baristaView: 'Pha chế',
       management: 'Quản lý',
       settings: 'Cài đặt',
       signOut: 'Đăng xuất'
     },
     pos: {
       menu: 'Thực đơn',
-      search: 'Tìm kiếm sản phẩm...',
+      search: 'Tìm món...',
       categories: {
         all: 'Tất cả',
         coffee: 'Cà phê',
@@ -185,34 +191,40 @@ export const translations = {
         other: 'Khác'
       },
       cart: {
-        title: 'Đơn hàng hiện tại',
-        empty: 'Giỏ hàng trống',
+        title: 'Đơn hiện tại',
+        empty: 'Giỏ hàng đang trống',
         table: 'Số bàn',
         total: 'Tổng cộng',
         placeOrder: 'Đặt đơn',
-        clear: 'Xóa',
-        selectPrice: 'Chọn giá'
+        clear: 'Xóa hết',
+        selectPrice: 'Chọn cỡ'
       }
     },
     barista: {
-      title: 'Bảng điều khiển Barista',
+      title: 'Màn hình Pha chế',
       tabs: {
         orders: 'Đơn hàng',
-        summary: 'Tổng hợp chuẩn bị',
+        summary: 'Tổng hợp',
         history: 'Lịch sử'
+      },
+      status: {
+        pending: 'Chờ xử lý',
+        preparing: 'Đang làm',
+        ready: 'Hoàn thành',
+        delivered: 'Đã giao'
       },
       orderCard: {
         table: 'Bàn',
-        start: 'Bắt đầu chuẩn bị',
-        ready: 'Đã xong',
+        start: 'Bắt đầu làm',
+        ready: 'Báo xong',
         delivered: 'Đã giao',
-        completed: 'Tất cả đơn hàng đã hoàn thành!'
+        completed: 'Tất cả đơn đã xong!'
       },
       history: {
         export: 'Xuất Excel',
-        noOrders: 'Không tìm thấy đơn hàng nào trong giai đoạn này',
+        noOrders: 'Không có đơn hàng nào',
         table: {
-          order: 'Đơn #',
+          order: 'Mã đơn',
           date: 'Ngày',
           table: 'Bàn',
           items: 'Món',
@@ -223,98 +235,98 @@ export const translations = {
         }
       },
       summary: {
-        title: 'Món cần chuẩn bị',
-        subtitle: 'Tổng số lượng trên tất cả các đơn hàng đang chờ',
-        markAllDone: 'Đánh dấu tất cả đã xong',
-        noItems: 'Hiện không có món nào trong hàng đợi.'
+        title: 'Món cần làm',
+        subtitle: 'Tổng hợp các món đang chờ pha chế',
+        markAllDone: 'Xong',
+        noItems: 'Hiện không có món nào chờ.'
       }
     },
     owner: {
-      title: 'Trung tâm quản lý',
+      title: 'Quản lý Cửa hàng',
       tabs: {
-        dashboard: 'Tổng quan',
-        inventory: 'Kho hàng',
-        staff: 'Nhân viên',
-        history: 'Lịch sử'
+        dashboard: 'Thống kê',
+        inventory: 'Kho / Menu',
+        staff: 'Nhân sự',
+        history: 'Lịch sử đơn'
       },
       dashboard: {
         revenue: 'Tổng doanh thu',
         orders: 'Tổng đơn hàng',
-        avgOrder: 'Đơn trung bình',
-        trend: 'Xu hướng doanh thu'
+        avgOrder: 'Giá trị TB đơn',
+        trend: 'Biểu đồ doanh thu'
       },
       inventory: {
-        title: 'Quản lý kho hàng',
+        title: 'Quản lý Menu & Kho',
         seed: 'Tạo dữ liệu mẫu',
-        add: 'Thêm sản phẩm',
+        add: 'Thêm món',
         manageCategories: 'Quản lý danh mục',
-        available: 'Còn hàng',
-        outOfStock: 'Hết hàng',
+        available: 'Đang bán',
+        outOfStock: 'Hết món',
         edit: 'Sửa',
         form: {
-          name: 'Tên',
+          name: 'Tên món',
           price: 'Giá (VD: 15 hoặc 15-20)',
           category: 'Danh mục'
         }
       },
       staff: {
-        title: 'Quản lý nhân viên',
-        user: 'Người dùng',
+        title: 'Quản lý Nhân sự',
+        user: 'Nhân viên',
         role: 'Vai trò',
         actions: 'Thao tác',
-        pending: 'Chờ phê duyệt',
-        active: 'Nhân viên đang làm việc',
-        inactive: 'Cựu nhân viên',
-        approve: 'Phê duyệt',
-        deactivate: 'Cho thôi việc',
+        pending: 'Chờ duyệt',
+        active: 'Đang làm việc',
+        inactive: 'Đã nghỉ việc',
+        approve: 'Duyệt',
+        deactivate: 'Thôi việc',
         table: {
-          user: 'Người dùng',
+          user: 'Nhân viên',
           role: 'Vai trò',
           actions: 'Thao tác'
         }
       },
       history: {
         title: 'Lịch sử đơn hàng',
-        export: 'Xuất',
+        export: 'Xuất Excel',
         modification: 'Lịch sử thay đổi'
       },
       modal: {
-        edit: 'Chỉnh sửa sản phẩm',
-        new: 'Sản phẩm mới',
-        name: 'Tên',
+        edit: 'Sửa món',
+        new: 'Thêm món mới',
+        name: 'Tên món',
         price: 'Giá',
         category: 'Danh mục',
-        available: 'Sẵn sàng để bán',
-        save: 'Lưu sản phẩm',
-        update: 'Cập nhật sản phẩm'
+        available: 'Đang bán',
+        save: 'Lưu',
+        update: 'Cập nhật'
       }
     },
     auth: {
       title: 'Cheese Lab POS',
-      signInPrompt: 'Vui lòng đăng nhập để truy cập hệ thống.',
+      signInPrompt: 'Vui lòng đăng nhập để sử dụng hệ thống.',
       signInButton: 'Đăng nhập với Google',
       loading: 'Đang tải...'
     },
     error: {
       title: 'Đã xảy ra lỗi',
-      message: 'Đã xảy ra lỗi không mong muốn.',
-      button: 'Tải lại ứng dụng'
+      message: 'Hệ thống gặp sự cố không mong muốn.',
+      button: 'Tải lại trang'
     },
     chat: {
       title: 'Cheese Lab AI',
       online: 'Luôn trực tuyến',
-      placeholder: 'Hỏi tôi bất cứ điều gì...',
-      welcome: 'Xin chào {name}! Tôi là trợ lý Cheese Lab. Tôi có thể giúp gì cho bạn hôm nay?'
+      placeholder: 'Bạn cần giúp gì...',
+      welcome: 'Xin chào {name}! Mình là trợ lý AI. Mình có thể giúp gì cho bạn hôm nay?'
     },
     settings: {
       title: 'Cài đặt',
       language: 'Ngôn ngữ',
       theme: 'Giao diện',
-      light: 'Chế độ sáng',
-      dark: 'Chế độ tối',
+      light: 'Sáng',
+      dark: 'Tối',
       english: 'Tiếng Anh',
       vietnamese: 'Tiếng Việt',
-      profile: 'Thông tin người dùng',
+      profile: 'Thông tin tài khoản',
       role: 'Vai trò',
       email: 'Email'
     }

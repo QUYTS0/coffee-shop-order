@@ -101,7 +101,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       [t.barista.history.table.table]: o.tableNumber,
       [t.barista.history.table.items]: o.items.map(i => `${i.quantity}x ${i.name}`).join(', '),
       [t.barista.history.table.total]: o.totalAmount,
-      [t.barista.history.table.status]: o.status,
+      [t.barista.history.table.status]: t.barista.status[o.status] || o.status,
       [t.barista.history.table.staff]: o.createdByName,
       [t.barista.history.table.paid]: o.paid ? (language === 'en' ? 'Yes' : 'Có') : (language === 'en' ? 'No' : 'Không')
     }));
@@ -1095,7 +1095,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                         {formatCurrency(order.totalAmount)}
                       </div>
                       <div className={`text-[10px] font-bold uppercase tracking-widest ${order.paid ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {order.paid ? (language === 'en' ? 'Paid' : 'Đã thanh toán') : (language === 'en' ? 'Unpaid' : 'Chưa thanh toán')} • {order.status}
+                        {order.paid ? (language === 'en' ? 'Paid' : 'Đã thanh toán') : (language === 'en' ? 'Unpaid' : 'Chưa thanh toán')} • {t.barista.status[order.status]}
                       </div>
                     </div>
                   </div>

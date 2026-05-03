@@ -165,6 +165,7 @@ export default function POS({ user, language }: { user: UserProfile, language: '
       setPriority('low');
       setEditingOrderId(null);
       setActiveTab('orders');
+      setIsCartOpen(false);
     } catch (error) {
       handleFirestoreError(error, editingOrderId ? OperationType.UPDATE : OperationType.CREATE, editingOrderId ? `orders/${editingOrderId}` : 'orders');
     } finally {
@@ -367,24 +368,34 @@ export default function POS({ user, language }: { user: UserProfile, language: '
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-6">
             <AnimatePresence mode="popLayout">
-              {orders.map(order => (
+              {[...orders].sort((a, b) => {
+                const priority: Record<string, number> = { 'delivered': 0, 'ready': 1, 'preparing': 2, 'pending': 3 };
+                const priorityA = priority[a.status] ?? 4;
+                const priorityB = priority[b.status] ?? 4;
+                if (priorityA !== priorityB) return priorityA - priorityB;
+                const timeA = a.createdAt?.toMillis?.() ?? 0;
+                const timeB = b.createdAt?.toMillis?.() ?? 0;
+                return timeB - timeA;
+              }).map(order => (
                 <motion.div
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   key={order.id}
-                  className={`bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border-l-8 transition-colors duration-300 ${
+                  className={`bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border-l-[25px] transition-colors duration-300 ${
                     order.status === 'ready' ? 'border-green-500 bg-green-50/30 dark:bg-green-900/10' :
-                    order.status === 'preparing' ? 'border-amber-500' : 'border-slate-300 dark:border-slate-700'
+                    order.status === 'preparing' ? 'border-amber-500' :
+                    order.status === 'delivered' ? 'border-blue-500 bg-blue-50/30 dark:bg-blue-900/10' :
+                    'border-slate-300 dark:border-slate-700'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="bg-slate-900 dark:bg-slate-800 text-white px-2 py-0.5 rounded text-sm font-bold">#{order.orderNumber}</span>
-                        <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded text-sm font-bold">{t.barista.orderCard.table} {order.tableNumber}</span>
+                        <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded text-sm font-bold whitespace-nowrap">{t.barista.orderCard.table} {order.tableNumber}</span>
                         {order.status === 'ready' && (
-                          <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-bold uppercase animate-pulse">
+                          <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-bold uppercase animate-pulse whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3" /> {t.barista.orderCard.ready}
                           </span>
                         )}
@@ -399,7 +410,7 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                       <div className={`text-[10px] font-bold uppercase tracking-widest ${
                         order.status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'
                       }`}>
-                        {order.status}
+                        {t.barista.status[order.status]}
                       </div>
                     </div>
                   </div>
@@ -429,12 +440,14 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                         >
                           <Edit2 className="w-4 h-4" /> {language === 'en' ? 'Edit' : 'Sửa'}
                         </button>
-                        <button
-                          onClick={() => markPaid(order.id)}
-                          className="flex-[2] py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
-                        >
-                          <DollarSign className="w-4 h-4" /> {t.barista.history.table.paid}
-                        </button>
+                        {order.status === 'delivered' && (
+                          <button
+                            onClick={() => markPaid(order.id)}
+                            className="flex-[2] py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                          >
+                            <DollarSign className="w-4 h-4" /> {t.barista.history.table.paid}
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -514,30 +527,30 @@ export default function POS({ user, language }: { user: UserProfile, language: '
                   </div>
                 ) : (
                   cart.map((item, idx) => (
-                    <div key={`${item.productId}-${item.price}-${idx}`} className="flex flex-col gap-2 bg-amber-50 dark:bg-slate-800 p-3 rounded-xl transition-colors duration-300">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-amber-900 dark:text-white truncate">{item.name}</h4>
-                          <p className="text-xs text-amber-600 dark:text-amber-500">{formatCurrency(item.price * item.quantity)}</p>
+                    <div key={`${item.productId}-${item.price}-${idx}`} className="flex flex-col gap-2 bg-amber-50 dark:bg-slate-800 p-3 lg:p-4 rounded-xl lg:rounded-2xl transition-colors duration-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="font-medium text-amber-900 dark:text-white truncate leading-tight text-base sm:text-lg">{item.name}</h4>
+                          <p className="text-sm text-amber-600 dark:text-amber-500 font-bold mt-1">{formatCurrency(item.price * item.quantity)}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.productId, item.price, -1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                            <Minus className="w-4 h-4" />
+                        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 self-start sm:self-auto p-1.5 rounded-lg border border-amber-200 dark:border-slate-700 shadow-sm shrink-0">
+                          <button onClick={() => updateQuantity(item.productId, item.price, -1)} className="p-1 hover:bg-amber-100 dark:hover:bg-slate-800 rounded-md text-amber-800 dark:text-amber-400 transition-colors">
+                            <Minus className="w-5 h-5 sm:w-4 sm:h-4" />
                           </button>
-                          <span className="w-6 text-center font-bold text-amber-900 dark:text-white">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.productId, item.price, 1)} className="p-1 hover:bg-amber-200 dark:hover:bg-slate-700 rounded-md text-amber-700 dark:text-amber-500">
-                            <Plus className="w-4 h-4" />
+                          <span className="w-8 text-center font-black text-amber-900 dark:text-white text-base sm:text-sm">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.productId, item.price, 1)} className="p-1 hover:bg-amber-100 dark:hover:bg-slate-800 rounded-md text-amber-800 dark:text-amber-400 transition-colors">
+                            <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg">
-                        <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-500" />
+                      <div className="flex items-start gap-2 bg-white/70 dark:bg-slate-900/70 p-2 sm:p-2.5 rounded-lg border border-transparent focus-within:border-amber-300 dark:focus-within:border-amber-700 transition-colors mt-1">
+                        <StickyNote className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                         <input
                           type="text"
                           value={item.note || ''}
                           onChange={(e) => updateNote(item.productId, item.price, e.target.value)}
                           placeholder={language === 'en' ? 'Add note...' : 'Thêm ghi chú...'}
-                          className="flex-1 bg-transparent text-[11px] outline-none text-amber-800 dark:text-amber-200 placeholder:text-amber-400/50"
+                          className="flex-1 bg-transparent text-sm sm:text-xs outline-none text-amber-900 dark:text-amber-100 placeholder:text-amber-400/70"
                         />
                       </div>
                     </div>
