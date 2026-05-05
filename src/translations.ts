@@ -84,10 +84,24 @@ export const translations = {
         history: 'History'
       },
       dashboard: {
+        title: 'Daily Dashboard',
+        subtitle: 'View analytics for a specific date',
         revenue: 'Total Revenue',
         orders: 'Total Orders',
         avgOrder: 'Avg Order',
-        trend: 'Revenue Trend'
+        trend: 'Revenue Trend',
+        modes: {
+          day: 'Day',
+          week: 'Week',
+          month: 'Month',
+          year: 'Year'
+        },
+        titles: {
+          day: 'Daily Dashboard',
+          week: 'Weekly Dashboard',
+          month: 'Monthly Dashboard',
+          year: 'Yearly Dashboard'
+        }
       },
       inventory: {
         title: 'Inventory Management',
@@ -250,10 +264,24 @@ export const translations = {
         history: 'Lịch sử đơn'
       },
       dashboard: {
+        title: 'Thống kê ngày',
+        subtitle: 'Xem dữ liệu cho ngày cụ thể',
         revenue: 'Tổng doanh thu',
         orders: 'Tổng đơn hàng',
         avgOrder: 'Giá trị TB đơn',
-        trend: 'Biểu đồ doanh thu'
+        trend: 'Biểu đồ doanh thu',
+        modes: {
+          day: 'Ngày',
+          week: 'Tuần',
+          month: 'Tháng',
+          year: 'Năm'
+        },
+        titles: {
+          day: 'Thống kê ngày',
+          week: 'Thống kê tuần',
+          month: 'Thống kê tháng',
+          year: 'Thống kê năm'
+        }
       },
       inventory: {
         title: 'Quản lý Menu & Kho',

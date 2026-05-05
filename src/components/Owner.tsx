@@ -3,7 +3,7 @@ import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, addDoc, updateDoc, doc, deleteDoc, orderBy, limit, where, Timestamp } from 'firebase/firestore';
 import { Product, Order, UserProfile, DailySale, Category } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Plus, Edit2, Trash2, Users, Package, TrendingUp, History, DollarSign, Coffee, Save, X, Download, Calendar, Filter, Clock, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Package, TrendingUp, History, DollarSign, Coffee, Save, X, Download, Calendar, Filter, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { translations } from '../translations';
@@ -25,6 +25,49 @@ export default function Owner({ user, language }: { user: UserProfile, language:
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('All');
   const [historyFilter, setHistoryFilter] = useState<'today' | 'week' | 'month' | 'all'>('today');
+  const [selectedDashboardDate, setSelectedDashboardDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dashboardViewMode, setDashboardViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
+
+  // Snap to current week/month when changing modes
+  useEffect(() => {
+    if (dashboardViewMode === 'week') {
+      const today = new Date();
+      const currentMonthWeeks = getWeeksOfSelectedMonth();
+      const todayStart = formatLocalDate(getStartOfWeek(today));
+      
+      const containsToday = currentMonthWeeks.findIndex(w => formatLocalDate(w.start) === todayStart);
+      if (containsToday !== -1 && formatLocalDate(parseLocalDate(selectedDashboardDate)) !== todayStart) {
+        // Only auto-snap if we are in the same month as today
+        const selectedDate = parseLocalDate(selectedDashboardDate);
+        if (selectedDate.getMonth() === today.getMonth() && selectedDate.getFullYear() === today.getFullYear()) {
+          setSelectedDashboardDate(formatLocalDate(today));
+        }
+      }
+    }
+  }, [dashboardViewMode]);
+  
+  // Weekly navigation state
+  const getStartOfWeek = (date: Date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
+  };
+  
+  const formatLocalDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseLocalDate = (s: string) => {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getStartOfWeek(new Date()));
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount).replace('₫', 'đ');
@@ -112,7 +155,90 @@ export default function Owner({ user, language }: { user: UserProfile, language:
     XLSX.writeFile(workbook, `OrderHistory_${historyFilter}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const dashboardOrders = orders.filter(o => {
+    if (!o.createdAt) return false;
+    const orderDate = o.createdAt.toDate();
+    const selected = parseLocalDate(selectedDashboardDate);
+    
+    if (dashboardViewMode === 'day') {
+      return formatLocalDate(orderDate) === selectedDashboardDate;
+    }
+    
+    if (dashboardViewMode === 'week') {
+      const weekStart = getStartOfWeek(selected);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      return orderDate >= weekStart && orderDate < weekEnd;
+    }
+    
+    if (dashboardViewMode === 'month') {
+      return orderDate.getMonth() === selected.getMonth() && orderDate.getFullYear() === selected.getFullYear();
+    }
+    
+    if (dashboardViewMode === 'year') {
+      return orderDate.getFullYear() === selected.getFullYear();
+    }
+    
+    return false;
+  });
+
+  const getWeekDays = (start: Date) => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  };
+
+  const formatDateToDisplay = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-');
+    return `${day}-${month}-${year}`;
+  };
+
+  const getYearsList = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = 2026; y <= currentYear; y++) {
+      years.push(y);
+    }
+    return years;
+  };
+
+  const getWeeksOfSelectedMonth = () => {
+    const selected = parseLocalDate(selectedDashboardDate);
+    const year = selected.getFullYear();
+    const month = selected.getMonth();
+    const firstDay = new Date(year, month, 1);
+    
+    const weeks = [];
+    let current = getStartOfWeek(firstDay);
+    
+    for (let i = 0; i < 4; i++) {
+      const start = new Date(current);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      
+      weeks.push({
+        label: `${language === 'en' ? 'Week' : 'Tuần'} ${i + 1}`,
+        range: `${start.getDate()}/${start.getMonth() + 1} - ${end.getDate()}/${end.getMonth() + 1}`,
+        start: start
+      });
+      
+      const nextWeek = new Date(current);
+      nextWeek.setDate(current.getDate() + 7);
+      current = nextWeek;
+    }
+    return weeks;
+  };
+
+  const weekDays = getWeekDays(currentWeekStart);
+  const weeksOfMonth = getWeeksOfSelectedMonth();
+  const yearsList = getYearsList();
+
+  const totalRevenue = dashboardOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const salesByDay = orders.reduce((acc, o) => {
     const date = o.createdAt?.toDate().toLocaleDateString() || 'Unknown';
     acc[date] = (acc[date] || 0) + o.totalAmount;
@@ -517,6 +643,200 @@ export default function Owner({ user, language }: { user: UserProfile, language:
       <div className="flex-1 overflow-y-auto p-4 lg:p-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
+            <div className="flex flex-col gap-6 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-all duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                    {t.owner.dashboard.titles[dashboardViewMode]}
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.owner.dashboard.subtitle}</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                  {/* View Mode Selector */}
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full sm:w-auto">
+                    {(['day', 'week', 'month', 'year'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setDashboardViewMode(mode)}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                          dashboardViewMode === mode
+                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        {t.owner.dashboard.modes[mode]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {/* Selected Date Display */}
+                    <div className="flex-1 sm:flex-none">
+                      {dashboardViewMode === 'day' ? (
+                        <div className="relative group">
+                          <div 
+                            className="px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-black text-lg outline-none transition-all flex items-center gap-3 shadow-inner min-w-[200px] justify-center group-hover:border-indigo-500"
+                          >
+                            <Calendar className="w-5 h-5 text-indigo-500" />
+                            {formatDateToDisplay(selectedDashboardDate)}
+                          </div>
+                          <input
+                            id="dashboard-datepicker"
+                            type="date"
+                            value={selectedDashboardDate}
+                            onChange={(e) => {
+                              const newDate = e.target.value;
+                              setSelectedDashboardDate(newDate);
+                              setCurrentWeekStart(getStartOfWeek(new Date(newDate)));
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </div>
+                      ) : dashboardViewMode === 'week' ? (
+                        <div className="relative group">
+                          <select
+                            value={weeksOfMonth.findIndex(w => {
+                              const weekStartStr = formatLocalDate(w.start);
+                              const selectedStartStr = formatLocalDate(getStartOfWeek(parseLocalDate(selectedDashboardDate)));
+                              return weekStartStr === selectedStartStr;
+                            })}
+                            onChange={(e) => {
+                              const idx = parseInt(e.target.value);
+                              const week = weeksOfMonth[idx];
+                              if (week) {
+                                const dateStr = formatLocalDate(week.start);
+                                setSelectedDashboardDate(dateStr);
+                                setCurrentWeekStart(week.start);
+                              }
+                            }}
+                            className="w-full sm:w-72 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-black text-lg outline-none transition-all shadow-inner hover:border-indigo-500 cursor-pointer pr-10"
+                          >
+                            {weeksOfMonth.map((w, idx) => (
+                              <option key={idx} value={idx}>
+                                {w.label} ({w.range})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : dashboardViewMode === 'month' ? (
+                        <select
+                          value={new Date(selectedDashboardDate).getMonth()}
+                          onChange={(e) => {
+                            const d = new Date(selectedDashboardDate);
+                            d.setMonth(parseInt(e.target.value));
+                            const dateStr = d.toISOString().split('T')[0];
+                            setSelectedDashboardDate(dateStr);
+                            setCurrentWeekStart(getStartOfWeek(d));
+                          }}
+                          className="w-full sm:w-64 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-black text-lg outline-none transition-all shadow-inner hover:border-indigo-500 cursor-pointer"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <option key={i} value={i}>
+                              {new Date(2000, i).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN', { month: 'long' })}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <select
+                          value={new Date(selectedDashboardDate).getFullYear()}
+                          onChange={(e) => {
+                            const d = new Date(selectedDashboardDate);
+                            d.setFullYear(parseInt(e.target.value));
+                            // Set to Jan 1st of that year to avoid month overflow
+                            d.setMonth(0);
+                            d.setDate(1);
+                            const dateStr = d.toISOString().split('T')[0];
+                            setSelectedDashboardDate(dateStr);
+                            setCurrentWeekStart(getStartOfWeek(d));
+                          }}
+                          className="w-full sm:w-64 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-black text-lg outline-none transition-all shadow-inner hover:border-indigo-500 cursor-pointer"
+                        >
+                          {yearsList.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setSelectedDashboardDate(today);
+                        setCurrentWeekStart(getStartOfWeek(new Date()));
+                      }}
+                      className="px-6 py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold rounded-2xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm whitespace-nowrap"
+                    >
+                      {language === 'en' ? 'Today' : 'Hôm nay'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekly Navigation Bar - only show if mode is day */}
+              {dashboardViewMode === 'day' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center px-2">
+                    <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                      {language === 'en' ? 'Select Day' : 'Chọn ngày'}
+                    </h3>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const newStart = new Date(currentWeekStart);
+                          newStart.setDate(currentWeekStart.getDate() - 7);
+                          setCurrentWeekStart(newStart);
+                        }}
+                        className="p-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl shadow-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-slate-100 dark:border-slate-700"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const newStart = new Date(currentWeekStart);
+                          newStart.setDate(currentWeekStart.getDate() + 7);
+                          setCurrentWeekStart(newStart);
+                        }}
+                        className="p-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl shadow-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-slate-100 dark:border-slate-700"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50 p-2 rounded-3xl border border-slate-100 dark:border-slate-800">
+                    <div className="grid grid-cols-7 gap-2 flex-1">
+                      {weekDays.map((day, idx) => {
+                        const dateStr = formatLocalDate(day);
+                        const isSelected = selectedDashboardDate === dateStr;
+                        const isToday = formatLocalDate(new Date()) === dateStr;
+                        
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedDashboardDate(dateStr)}
+                            className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl transition-all relative overflow-hidden ${
+                              isSelected 
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none transform scale-105 z-10' 
+                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-slate-100 dark:border-slate-800'
+                            }`}
+                          >
+                            <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-indigo-100' : 'text-slate-400 dark:text-slate-500'}`}>
+                              {day.toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'short' })}
+                            </span>
+                            <span className="text-lg font-black tracking-tighter">
+                              {day.getDate()}
+                            </span>
+                            {isToday && !isSelected && (
+                              <div className="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="flex items-center gap-4 mb-4">
@@ -530,7 +850,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                   <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl"><Coffee className="w-6 h-6" /></div>
                   <h3 className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs tracking-widest">{t.owner.dashboard.orders}</h3>
                 </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white">{orders.length}</p>
+                <p className="text-4xl font-black text-slate-900 dark:text-white">{dashboardOrders.length}</p>
               </div>
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="flex items-center gap-4 mb-4">
@@ -538,7 +858,7 @@ export default function Owner({ user, language }: { user: UserProfile, language:
                   <h3 className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs tracking-widest">{t.owner.dashboard.avgOrder}</h3>
                 </div>
                 <p className="text-4xl font-black text-slate-900 dark:text-white">
-                  {orders.length ? formatCurrency(totalRevenue / orders.length) : formatCurrency(0)}
+                  {dashboardOrders.length ? formatCurrency(totalRevenue / dashboardOrders.length) : formatCurrency(0)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
