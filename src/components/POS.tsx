@@ -215,7 +215,13 @@ export default function POS({ user, language }: { user: UserProfile, language: '
 
   const displayCategories = [
     { id: 'All', label: t.pos.categories.all },
-    ...categories.map(cat => ({ id: cat.id, label: cat.name }))
+    ...[...categories].sort((a, b) => {
+      const aIsOther = a.name.toLowerCase() === 'khác' || a.name.toLowerCase() === 'other';
+      const bIsOther = b.name.toLowerCase() === 'khác' || b.name.toLowerCase() === 'other';
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
+    }).map(cat => ({ id: cat.id, label: cat.name }))
   ];
 
   const scrollToCart = () => {
